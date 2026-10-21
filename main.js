@@ -87,8 +87,27 @@ async function main() {
   }
   requestAnimationFrame(frame);
 
+  // fullscreen of the picture: button, double-click, Alt+Enter
+  const wrap = document.getElementById("wrap");
+  const fsButton = document.getElementById("fs");
+  const canFullscreen = !!(wrap.requestFullscreen || wrap.webkitRequestFullscreen);
+  function toggleFullscreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else if (canFullscreen) {
+      const p = (wrap.requestFullscreen || wrap.webkitRequestFullscreen).call(wrap);
+      if (p && p.catch) p.catch(() => {});
+    }
+  }
+  if (canFullscreen) {
+    fsButton.hidden = false;
+    fsButton.addEventListener("click", (e) => { toggleFullscreen(); e.currentTarget.blur(); });
+    canvas.addEventListener("dblclick", toggleFullscreen);
+  }
+
   window.addEventListener("pointerdown", unlockAudio);
   window.addEventListener("keydown", (e) => {
+    if (e.code === "Enter" && e.altKey) { toggleFullscreen(); e.preventDefault(); return; }
     const code = KEYS[e.code];
     if (code) e.preventDefault();
     // the key that switches sound on is not passed on, so it doesn't skip the intro
