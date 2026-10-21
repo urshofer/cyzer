@@ -9,5 +9,7 @@ Arrow keys / numpad: move, Space: fire / select, Enter: confirm, Q: give up.
 Gamepads are supported (d-pad / stick, A fire, B / Start confirm).
 Add `?center` to the URL for the original no-collision cheat.
 
+The game starts on load; sound switches on with the first key press or click.
+
 This repository only holds the compiled files (`index.html`, `main.js`,
 `huminvad.wasm`); it is a static site with no server side.

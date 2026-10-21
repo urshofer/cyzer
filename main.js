@@ -33,64 +33,71 @@ async function main() {
   const canvas = document.getElementById("screen");
   const ctx = canvas.getContext("2d");
   const image = ctx.createImageData(320, 200);
-  const startBtn = document.getElementById("start");
-  let started = false;
+  const hint = document.getElementById("sound");
+  wasm.hi_init(new URLSearchParams(location.search).has("center") ? 1 : 0);
 
-  function start() {
-    if (started) return;
-    started = true;
-    startBtn.remove();
-    wasm.hi_init(new URLSearchParams(location.search).has("center") ? 1 : 0);
-    try {
-      const ac = new (window.AudioContext || window.webkitAudioContext)();
-      wasm.hi_audio_rate(ac.sampleRate);
-      const node = ac.createScriptProcessor(2048, 0, 2);
-      node.onaudioprocess = (e) => {
-        const n = e.outputBuffer.length;
-        const ptr = wasm.hi_audio(n);
-        const src = new Float32Array(wasm.memory.buffer, ptr, n);
-        e.outputBuffer.getChannelData(0).set(src);
-        e.outputBuffer.getChannelData(1).set(src);
-      };
-      node.connect(ac.destination);
-      ac.resume();
-      window.hiAudio = ac;
-    } catch (err) {
-      console.warn("no audio:", err);
-    }
-    let last = performance.now();
-    let acc = 0;
-    function frame(now) {
-      acc += (now - last) / 1000;
-      last = now;
-      wasm.hi_pad(padBits());
-      let n = 0;
-      while (acc >= 1 / VSYNC_HZ && n < 8) {
-        wasm.hi_vsync();
-        acc -= 1 / VSYNC_HZ;
-        n++;
-      }
-      if (n === 8) acc = 0;
-      const ptr = wasm.hi_frame(); // may grow memory: take the buffer afterwards
-      image.data.set(new Uint8Array(wasm.memory.buffer, ptr, 320 * 200 * 4));
-      ctx.putImageData(image, 0, 0);
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
+  // Browsers only allow sound after a user gesture: the game starts right
+  // away and audio is switched on by the first key, click or tap.
+  let ac = null;
+  try {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    wasm.hi_audio_rate(ac.sampleRate);
+    const node = ac.createScriptProcessor(2048, 0, 2);
+    node.onaudioprocess = (e) => {
+      const n = e.outputBuffer.length;
+      const ptr = wasm.hi_audio(n);
+      const src = new Float32Array(wasm.memory.buffer, ptr, n);
+      e.outputBuffer.getChannelData(0).set(src);
+      e.outputBuffer.getChannelData(1).set(src);
+    };
+    node.connect(ac.destination);
+    ac.onstatechange = () => { if (ac.state === "running") hint.hidden = true; };
+    ac.resume().catch(() => {});
+    hint.hidden = ac.state === "running";
+  } catch (err) {
+    console.warn("no audio:", err);
+    hint.hidden = true;
+  }
+  /** Switch sound on; true if this gesture was used up for that. */
+  function unlockAudio() {
+    if (!ac || ac.state === "running") return false;
+    ac.resume().catch(() => {});
+    return true;
   }
 
-  startBtn.addEventListener("click", start);
-  window.addEventListener("gamepadconnected", () => {
-    startBtn.querySelector("span").textContent = "gamepad found: click or press a key to start";
-  });
+  let last = performance.now();
+  let acc = 0;
+  function frame(now) {
+    acc += (now - last) / 1000;
+    last = now;
+    const bits = padBits();
+    if (bits) unlockAudio();
+    wasm.hi_pad(bits);
+    let n = 0;
+    while (acc >= 1 / VSYNC_HZ && n < 8) {
+      wasm.hi_vsync();
+      acc -= 1 / VSYNC_HZ;
+      n++;
+    }
+    if (n === 8) acc = 0;
+    const ptr = wasm.hi_frame(); // may grow memory: take the buffer afterwards
+    image.data.set(new Uint8Array(wasm.memory.buffer, ptr, 320 * 200 * 4));
+    ctx.putImageData(image, 0, 0);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  window.addEventListener("pointerdown", unlockAudio);
   window.addEventListener("keydown", (e) => {
     const code = KEYS[e.code];
-    if (!started) { start(); e.preventDefault(); return; }
-    if (code) { wasm.hi_key(code, 1); e.preventDefault(); }
+    if (code) e.preventDefault();
+    // the key that switches sound on is not passed on, so it doesn't skip the intro
+    if (unlockAudio()) return;
+    if (code) wasm.hi_key(code, 1);
   });
   window.addEventListener("keyup", (e) => {
     const code = KEYS[e.code];
-    if (code && started) { wasm.hi_key(code, 0); e.preventDefault(); }
+    if (code) { wasm.hi_key(code, 0); e.preventDefault(); }
   });
 }
 
