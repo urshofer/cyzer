@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#000000">
 <title>Human Invaders</title>
 <style>
   :root { --bg: #000; --fg: #9fd; --dim: #577; }
@@ -14,16 +18,17 @@
   #sound { position: absolute; top: 8px; right: 8px; padding: 4px 8px; background: rgba(0,0,0,.7);
     color: var(--fg); border-radius: 4px; font-size: 12px; pointer-events: none; }
   p { color: var(--dim); margin: 10px 16px; text-align: center; }
-  button#fs { font: inherit; color: var(--fg); background: transparent; border: 1px solid var(--dim);
-    border-radius: 4px; padding: 2px 10px; margin-left: 8px; cursor: pointer; }
-  button#fs:hover { border-color: var(--fg); }
-  /* fullscreen: black stage, picture as large as possible at 4:3 */
-  #wrap:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; background: #000;
-    display: flex; align-items: center; justify-content: center; cursor: none; }
-  #wrap:fullscreen canvas { width: min(100vw, 100vh * 4 / 3); height: min(100vh, 100vw * 3 / 4); }
-  #wrap:-webkit-full-screen { width: 100vw; height: 100vh; background: #000;
-    display: flex; align-items: center; justify-content: center; cursor: none; }
-  #wrap:-webkit-full-screen canvas { width: min(100vw, 100vh * 4 / 3); height: min(100vh, 100vw * 3 / 4); }
+  a#fs { color: var(--fg); margin-left: 8px; }
+  /* fullscreen (and the in-window fallback): black stage, picture as large
+     as possible at 4:3. Driven by a class so it doesn't depend on :fullscreen. */
+  body.max { overflow: hidden; }
+  body.max #wrap { position: fixed; inset: 0; width: auto; height: auto; aspect-ratio: auto;
+    background: #000; display: flex; align-items: center; justify-content: center; z-index: 10; cursor: none; }
+  body.max canvas { width: min(100vw, 100vh * 4 / 3); height: min(100vh, 100vw * 3 / 4); }
+  @supports (height: 100dvh) {
+    body.max canvas { width: min(100dvw, 100dvh * 4 / 3); height: min(100dvh, 100dvw * 3 / 4); }
+  }
+  body.max p { display: none; }
 </style>
 </head>
 <body>
@@ -32,7 +37,7 @@
   <div id="sound" hidden>click or press a key for sound</div>
 </div>
 <p>Arrows / numpad: move &middot; Space: fire / select &middot; Enter: confirm &middot; Q: give up<br>Gamepad: d-pad / stick move &middot; A: fire &middot; B / Start: confirm<br>
-Fullscreen: double-click the picture or Alt+Enter <button id="fs" type="button" hidden>Fullscreen</button></p>
+<a href="#" id="fs" role="button">Fullscreen</a> (or double-click the picture, Alt+Enter; Esc leaves)</p>
 <script src="main.js"></script>
 </body>
 </html>

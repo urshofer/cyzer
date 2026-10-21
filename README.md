@@ -7,7 +7,7 @@ Play: https://urshofer.github.io/cyzer/
 
 Arrow keys / numpad: move, Space: fire / select, Enter: confirm, Q: give up.
 Gamepads are supported (d-pad / stick, A fire, B / Start confirm).
-Fullscreen: button below the picture, double-click, or Alt+Enter.
+Fullscreen: the link below the picture, double-click, or Alt+Enter.
 Add `?center` to the URL for the original no-collision cheat.
 
 The game starts on load; sound switches on with the first key press or click.

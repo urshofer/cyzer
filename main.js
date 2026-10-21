@@ -87,27 +87,47 @@ async function main() {
   }
   requestAnimationFrame(frame);
 
-  // fullscreen of the picture: button, double-click, Alt+Enter
-  const wrap = document.getElementById("wrap");
-  const fsButton = document.getElementById("fs");
-  const canFullscreen = !!(wrap.requestFullscreen || wrap.webkitRequestFullscreen);
+  // Fullscreen: the whole page goes fullscreen (most reliable in Safari),
+  // standard or webkit-prefixed API. The layout is switched with the "max"
+  // class; where no fullscreen API exists (iPhone Safari) that class alone
+  // maximizes the picture inside the browser window.
+  const root = document.documentElement;
+  const requestFs = root.requestFullscreen || root.webkitRequestFullscreen || root.webkitRequestFullScreen;
+  const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen;
+  const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || document.webkitCurrentFullScreenElement;
+  const setMax = (on) => document.body.classList.toggle("max", on);
   function toggleFullscreen() {
-    if (document.fullscreenElement || document.webkitFullscreenElement) {
-      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-    } else if (canFullscreen) {
-      const p = (wrap.requestFullscreen || wrap.webkitRequestFullscreen).call(wrap);
-      if (p && p.catch) p.catch(() => {});
+    if (fsElement()) {
+      try { const p = exitFs.call(document); if (p && p.catch) p.catch(() => {}); } catch (err) {}
+      setMax(false);
+      return;
+    }
+    if (document.body.classList.contains("max")) { setMax(false); return; }
+    setMax(true);
+    if (requestFs) {
+      try {
+        const p = requestFs.call(root);
+        if (p && p.catch) p.catch(() => {}); // refused: stay maximized in the window
+      } catch (err) {}
     }
   }
-  if (canFullscreen) {
-    fsButton.hidden = false;
-    fsButton.addEventListener("click", (e) => { toggleFullscreen(); e.currentTarget.blur(); });
-    canvas.addEventListener("dblclick", toggleFullscreen);
-  }
+  const onFsChange = () => { if (!fsElement()) setMax(false); };
+  document.addEventListener("fullscreenchange", onFsChange);
+  document.addEventListener("webkitfullscreenchange", onFsChange);
+  document.getElementById("fs").addEventListener("click", (e) => {
+    e.preventDefault();
+    toggleFullscreen();
+    e.currentTarget.blur();
+  });
+  canvas.addEventListener("dblclick", (e) => { e.preventDefault(); toggleFullscreen(); });
 
   window.addEventListener("pointerdown", unlockAudio);
   window.addEventListener("keydown", (e) => {
     if (e.code === "Enter" && e.altKey) { toggleFullscreen(); e.preventDefault(); return; }
+    // Esc leaves the in-window fallback (real fullscreen is left by the browser)
+    if (e.code === "Escape" && !fsElement() && document.body.classList.contains("max")) {
+      setMax(false); e.preventDefault(); return;
+    }
     const code = KEYS[e.code];
     if (code) e.preventDefault();
     // the key that switches sound on is not passed on, so it doesn't skip the intro
