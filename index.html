@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Human Invaders</title>
+<style>
+  :root { --bg: #000; --fg: #9fd; --dim: #577; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 14px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #wrap { position: relative; width: min(100vw - 32px, (100vh - 80px) * 4 / 3); aspect-ratio: 4 / 3; }
+  canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; background: #000; }
+  #start { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 8px; background: rgba(0,0,0,.8); cursor: pointer; border: 0; color: inherit; font: inherit; }
+  #start b { font-size: 20px; letter-spacing: 4px; }
+  p { color: var(--dim); margin: 10px 16px; text-align: center; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="screen" width="320" height="200"></canvas>
+  <button id="start"><b>HUMAN INVADERS</b><span>click or press a key to start</span></button>
+</div>
+<p>Arrows / numpad: move &middot; Space: fire / select &middot; Enter: confirm &middot; Q: give up<br>Gamepad: d-pad / stick move &middot; A: fire &middot; B / Start: confirm</p>
+<script src="main.js"></script>
+</body>
+</html>
