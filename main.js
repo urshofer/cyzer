@@ -9,8 +9,8 @@ const KEYS = {
 for (let i = 0; i < 26; i++) KEYS["Key" + String.fromCharCode(65 + i)] = 100 + i;
 for (let d = 0; d < 10; d++) { KEYS["Digit" + d] = 200 + d; KEYS["Numpad" + d] = 300 + d; }
 
-// Gamepad (standard mapping): d-pad or left stick move, A/X/RT fire, B/Y/Start confirm.
-const PAD_UP = 1, PAD_DOWN = 2, PAD_LEFT = 4, PAD_RIGHT = 8, PAD_FIRE = 16, PAD_START = 32;
+// Gamepad (standard mapping): d-pad or left stick move, A/X/RT fire, B smartbomb, Y/Start confirm.
+const PAD_UP = 1, PAD_DOWN = 2, PAD_LEFT = 4, PAD_RIGHT = 8, PAD_FIRE = 16, PAD_START = 32, PAD_BOMB = 64;
 function padBits() {
   let bits = 0;
   for (const gp of navigator.getGamepads ? navigator.getGamepads() : []) {
@@ -22,7 +22,8 @@ function padBits() {
     if (b(14) || x < -0.5) bits |= PAD_LEFT;
     if (b(15) || x > 0.5) bits |= PAD_RIGHT;
     if (b(0) || b(2) || b(7)) bits |= PAD_FIRE;
-    if (b(1) || b(3) || b(9)) bits |= PAD_START;
+    if (b(3) || b(9)) bits |= PAD_START;
+    if (b(1)) bits |= PAD_BOMB;
   }
   return bits;
 }
