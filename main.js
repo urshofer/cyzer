@@ -8,6 +8,16 @@ const KEYS = {
 };
 for (let i = 0; i < 26; i++) KEYS["Key" + String.fromCharCode(65 + i)] = 100 + i;
 for (let d = 0; d < 10; d++) { KEYS["Digit" + d] = 200 + d; KEYS["Numpad" + d] = 300 + d; }
+// Fallback by e.key / e.keyCode for events whose e.code is empty or unknown
+// (seen in Safari on key releases while another key is held).
+const KEYS_BY_KEY = {
+  ArrowUp: 1, Up: 1, ArrowDown: 2, Down: 2, ArrowLeft: 3, Left: 3, ArrowRight: 4, Right: 4,
+  " ": 5, Spacebar: 5, Enter: 6, Escape: 7, Esc: 7,
+};
+const KEYS_BY_KEYCODE = { 38: 1, 40: 2, 37: 3, 39: 4, 32: 5, 13: 6, 27: 7 };
+function keyCode(e) {
+  return KEYS[e.code] || KEYS_BY_KEY[e.key] || KEYS_BY_KEYCODE[e.keyCode] || 0;
+}
 
 // Gamepad (standard mapping): d-pad or left stick move, A/X/RT fire, B smartbomb, Y/Start confirm.
 const PAD_UP = 1, PAD_DOWN = 2, PAD_LEFT = 4, PAD_RIGHT = 8, PAD_FIRE = 16, PAD_START = 32, PAD_BOMB = 64;
@@ -123,22 +133,65 @@ async function main() {
   canvas.addEventListener("dblclick", (e) => { e.preventDefault(); toggleFullscreen(); });
 
   window.addEventListener("pointerdown", unlockAudio);
+  // Keys held as far as the game knows, by event code. Releases are matched
+  // against this, so a key always comes up as the game code it went down as,
+  // and everything is released when the page loses the keyboard (keyup
+  // events are not delivered then).
+  const held = new Map();
+  function press(id, code) {
+    if (!held.has(id)) held.set(id, code);
+    wasm.hi_key(code, 1);
+  }
+  function release(id) {
+    const code = held.get(id);
+    if (code === undefined) return;
+    held.delete(id);
+    // the same game key may still be held under another id (Enter / NumpadEnter)
+    for (const c of held.values()) if (c === code) return;
+    wasm.hi_key(code, 0);
+  }
+  function releaseAll() {
+    for (const code of new Set(held.values())) wasm.hi_key(code, 0);
+    held.clear();
+  }
+  const eventId = (e) => e.code || e.key || String(e.keyCode);
+  // ?keylog: trace key events in the console, to diagnose browser quirks
+  if (new URLSearchParams(location.search).has("keylog")) {
+    const log = (e) => console.log(e.type, JSON.stringify({ code: e.code, key: e.key, keyCode: e.keyCode, repeat: e.repeat }),
+      "held:", [...held.keys()].join(" "));
+    window.addEventListener("keydown", log, true);
+    window.addEventListener("keyup", log, true);
+  }
+
   window.addEventListener("keydown", (e) => {
     if (e.code === "Enter" && e.altKey) { toggleFullscreen(); e.preventDefault(); return; }
     // Esc leaves the in-window fallback (real fullscreen is left by the browser)
     if (e.code === "Escape" && !fsElement() && document.body.classList.contains("max")) {
       setMax(false); e.preventDefault(); return;
     }
-    const code = KEYS[e.code];
+    // with Cmd held macOS delivers no keyup for the other keys
+    if (e.metaKey) { releaseAll(); return; }
+    const code = keyCode(e);
     if (code) e.preventDefault();
     // the key that switches sound on is not passed on, so it doesn't skip the intro
     if (unlockAudio()) return;
-    if (code) wasm.hi_key(code, 1);
+    if (code) press(eventId(e), code);
   });
   window.addEventListener("keyup", (e) => {
-    const code = KEYS[e.code];
-    if (code) { wasm.hi_key(code, 0); e.preventDefault(); }
+    const id = eventId(e);
+    if (held.has(id)) {
+      release(id);
+    } else {
+      // unknown id: release whatever was pressed as this game key
+      const code = keyCode(e);
+      for (const [k, c] of held) if (c === code) release(k);
+    }
+    if (keyCode(e)) e.preventDefault();
+    if (e.key === "Meta") releaseAll();
   });
+  window.addEventListener("blur", releaseAll);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) releaseAll(); });
+  window.addEventListener("pagehide", releaseAll);
 }
 
 main();
